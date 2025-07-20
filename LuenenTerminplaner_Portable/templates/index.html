@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lünen Terminplaner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 0;
+            margin-bottom: 2rem;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(45deg, #5a6fd8, #6a4190);
+        }
+        .meeting-card {
+            margin-bottom: 1rem;
+            border-left: 4px solid #667eea;
+        }
+        .summary-box {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .export-buttons {
+            margin-top: 1rem;
+        }
+        .committee-badge {
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="hero-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto text-center">
+                    <h1 class="display-4 fw-bold">
+                        <i class="fas fa-calendar-alt me-3"></i>
+                        Lünen Terminplaner
+                    </h1>
+                    <p class="lead">Automatisierte Extraktion und Zusammenfassung von Ratsinformationen der Stadt Lünen</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-search me-2"></i>
+                            Termine suchen
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="searchForm">
+                            <div class="mb-3">
+                                <label for="startDate" class="form-label">Startdatum</label>
+                                <input type="date" class="form-control" id="startDate" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="endDate" class="form-label">Enddatum</label>
+                                <input type="date" class="form-control" id="endDate" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-filter me-2"></i>
+                                    Gremien-Filter
+                                </label>
+                                <div class="d-flex justify-content-between align-items-center text-muted small mb-2">
+                                    <span>Relevante Gremien sind vorausgewählt. Sie können die Auswahl anpassen.</span>
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="selectAllCommittees()">Alle</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="selectRelevantCommittees()">Relevante</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAllCommittees()">Keine</button>
+                                    </div>
+                                </div>
+                                <div id="committeeFilters" class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                                    <div class="text-center text-muted">
+                                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        Lade verfügbare Gremien...
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-download me-2"></i>
+                                Termine laden
+                            </button>
+                        </form>
+
+                        <div class="loading-spinner text-center mt-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Lädt...</span>
+                            </div>
+                            <p class="mt-2">Lade und verarbeite Termine...</p>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div id="resultsSection" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4><i class="fas fa-list me-2"></i>Gefundene Termine</h4>
+                        <div class="export-buttons">
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-outline-primary btn-sm" onclick="exportData('markdown')">
+                                    <i class="fab fa-markdown me-1"></i>Markdown
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="exportData('html')">
+                                    <i class="fas fa-code me-1"></i>HTML
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="exportData('pdf')">
+                                    <i class="fas fa-file-pdf me-1"></i>PDF
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm" onclick="exportData('json')">
+                                    <i class="fas fa-file-code me-1"></i>JSON
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="meetingsContainer">
+                    </div>
+                </div>
+
+                <div id="errorSection" style="display: none;">
+                    <div class="alert alert-danger">
+                        <h5><i class="fas fa-exclamation-triangle me-2"></i>Fehler</h5>
+                        <p id="errorMessage"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-light text-center py-4 mt-5">
+        <div class="container">
+            <p class="text-muted mb-0">
+                <i class="fas fa-city me-2"></i>
+                Lünen Terminplaner - Automatisierte Ratsinfo-Extraktion
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentMeetings = [];
+        let availableCommittees = [];
+        let relevantCommittees = [];
+
+        // Load committees on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadCommittees();
+        });
+
+        async function loadCommittees() {
+            try {
+                const response = await fetch('/api/committees');
+                const data = await response.json();
+                
+                if (data.success) {
+                    availableCommittees = data.committees;
+                    relevantCommittees = data.relevant_committees;
+                    renderCommitteeFilters();
+                } else {
+                    document.getElementById('committeeFilters').innerHTML = 
+                        '<div class="text-danger">Fehler beim Laden der Gremien</div>';
+                }
+            } catch (error) {
+                console.error('Error loading committees:', error);
+                document.getElementById('committeeFilters').innerHTML = 
+                    '<div class="text-danger">Fehler beim Laden der Gremien</div>';
+            }
+        }
+
+        function renderCommitteeFilters() {
+            const container = document.getElementById('committeeFilters');
+            
+            if (availableCommittees.length === 0) {
+                container.innerHTML = '<div class="text-muted">Keine Gremien verfügbar</div>';
+                return;
+            }
+
+            const html = availableCommittees.map(committee => {
+                const isRelevant = relevantCommittees.includes(committee);
+                const badgeClass = isRelevant ? 'bg-primary' : 'bg-secondary';
+                const badgeText = isRelevant ? 'Relevant' : '';
+                
+                return `
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" value="${committee}" 
+                               id="committee-${availableCommittees.indexOf(committee)}" 
+                               ${isRelevant ? 'checked' : ''}>
+                        <label class="form-check-label d-flex justify-content-between align-items-center" 
+                               for="committee-${availableCommittees.indexOf(committee)}">
+                            <span>${committee}</span>
+                            ${badgeText ? `<span class="badge ${badgeClass} ms-2">${badgeText}</span>` : ''}
+                        </label>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        function getSelectedCommittees() {
+            const checkboxes = document.querySelectorAll('#committeeFilters input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        function selectAllCommittees() {
+            const checkboxes = document.querySelectorAll('#committeeFilters input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = true);
+        }
+
+        function clearAllCommittees() {
+            const checkboxes = document.querySelectorAll('#committeeFilters input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+        }
+
+        function selectRelevantCommittees() {
+            const checkboxes = document.querySelectorAll('#committeeFilters input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = relevantCommittees.includes(cb.value);
+            });
+        }
+
+        document.getElementById('searchForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Bitte wählen Sie Start- und Enddatum aus.');
+                return;
+            }
+
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('Das Startdatum muss vor dem Enddatum liegen.');
+                return;
+            }
+            
+            const selectedCommittees = getSelectedCommittees();
+            
+            if (selectedCommittees.length === 0) {
+                alert('Bitte wählen Sie mindestens ein Gremium aus.');
+                return;
+            }
+            
+            showLoading();
+            hideResults();
+            hideError();
+            
+            try {
+                const response = await fetch('/api/scrape', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        start_date: startDate,
+                        end_date: endDate,
+                        committees: selectedCommittees
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentMeetings = data.meetings;
+                    displayMeetings(data.meetings);
+                    showResults();
+                } else {
+                    showError(data.error || 'Unbekannter Fehler beim Laden der Termine');
+                }
+            } catch (error) {
+                showError('Verbindungsfehler: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        });
+
+        function displayMeetings(meetings) {
+            const container = document.getElementById('meetingsContainer');
+            
+            if (meetings.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning"><i class="fas fa-info-circle me-2"></i>Keine Termine im gewählten Zeitraum gefunden.</div>';
+                return;
+            }
+            
+            container.innerHTML = meetings.map(meeting => `
+                <div class="card meeting-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">${meeting.title}</h6>
+                        <span class="badge bg-secondary committee-badge">${meeting.committee}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><i class="fas fa-calendar me-2"></i><strong>Datum:</strong> ${meeting.date}</p>
+                                <p class="mb-1"><i class="fas fa-clock me-2"></i><strong>Uhrzeit:</strong> ${meeting.time}</p>
+                                <p class="mb-1"><i class="fas fa-map-marker-alt me-2"></i><strong>Ort:</strong> ${meeting.location}</p>
+                                <div class="mt-2">
+                                    ${meeting.pdf_url ? `<a href="${meeting.pdf_url}" target="_blank" class="btn btn-sm btn-outline-danger me-2"><i class="fas fa-file-pdf me-1"></i>PDF</a>` : ''}
+                                    ${meeting.detail_page_url ? `<a href="${meeting.detail_page_url}" class="btn btn-sm btn-primary"><i class="fas fa-eye me-1"></i>Details</a>` : ''}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                ${meeting.summary ? `
+                                    <div class="summary-box">
+                                        <h6><i class="fas fa-list-ul me-2"></i>Kurzzusammenfassung</h6>
+                                        <p class="small mb-2">${meeting.summary}</p>
+                                        ${meeting.detail_page_url ? `<small><a href="${meeting.detail_page_url}" class="text-decoration-none">→ Ausführliche Zusammenfassung</a></small>` : ''}
+                                    </div>
+                                ` : '<p class="text-muted small">Keine Zusammenfassung verfügbar</p>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showLoading() {
+            document.querySelector('.loading-spinner').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.querySelector('.loading-spinner').style.display = 'none';
+        }
+
+        function showResults() {
+            document.getElementById('resultsSection').style.display = 'block';
+        }
+
+        function hideResults() {
+            document.getElementById('resultsSection').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorSection').style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('errorSection').style.display = 'none';
+        }
+
+        async function exportData(format) {
+            if (currentMeetings.length === 0) {
+                alert('Keine Daten zum Exportieren verfügbar.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/export/${format}?data=${encodeURIComponent(JSON.stringify(currentMeetings))}`);
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `ratsinfo_export.${format}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } else {
+                    alert('Fehler beim Export der Daten.');
+                }
+            } catch (error) {
+                alert('Exportfehler: ' + error.message);
+            }
+        }
+
+        // Set default dates (current month)
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        
+        document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('endDate').value = lastDay.toISOString().split('T')[0];
+    </script>
+</body>
+</html>

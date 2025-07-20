@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ meeting.title }} - Lünen Terminplaner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .meeting-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        .summary-section {
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .detailed-summary {
+            background: #e8f5e8;
+            border-left: 4px solid #28a745;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .full-text-preview {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .metadata {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+        }
+        .btn-back {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+        }
+        .btn-back:hover {
+            background: linear-gradient(45deg, #5a67d8, #6b46c1);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="meeting-header">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <h1 class="mb-3">
+                        <i class="bi bi-calendar-event me-2"></i>
+                        {{ meeting.title }}
+                    </h1>
+                    <p class="lead mb-0">
+                        <i class="bi bi-people me-2"></i>
+                        {{ meeting.committee }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-12 mb-4">
+                <a href="/" class="btn btn-back">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    Zurück zur Übersicht
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Ausführliche Zusammenfassung -->
+                <div class="detailed-summary">
+                    <h3>
+                        <i class="bi bi-file-text me-2"></i>
+                        Ausführliche Zusammenfassung
+                    </h3>
+                    {% if meeting.detailed_summary %}
+                        <p class="mb-0">{{ meeting.detailed_summary }}</p>
+                    {% else %}
+                        <p class="text-muted mb-0">Keine ausführliche Zusammenfassung verfügbar.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Kurze Zusammenfassung -->
+                <div class="summary-section">
+                    <h4>
+                        <i class="bi bi-chat-quote me-2"></i>
+                        Kurzzusammenfassung
+                    </h4>
+                    {% if meeting.summary %}
+                        <p class="mb-0">{{ meeting.summary }}</p>
+                    {% else %}
+                        <p class="text-muted mb-0">Keine Kurzzusammenfassung verfügbar.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Textvorschau -->
+                {% if meeting.full_text %}
+                <div class="full-text-preview">
+                    <h4>
+                        <i class="bi bi-eye me-2"></i>
+                        Textvorschau aus dem Dokument
+                    </h4>
+                    <div style="font-family: monospace; font-size: 0.9rem; line-height: 1.4;">
+                        {{ meeting.full_text | replace('\n', '<br>') | safe }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="col-lg-4">
+                <!-- Meeting-Metadaten -->
+                <div class="metadata">
+                    <h4>
+                        <i class="bi bi-info-circle me-2"></i>
+                        Meeting-Details
+                    </h4>
+                    
+                    <div class="mb-3">
+                        <strong>
+                            <i class="bi bi-calendar3 me-2"></i>
+                            Datum:
+                        </strong>
+                        <div>{{ meeting.date }}</div>
+                    </div>
+
+                    {% if meeting.time %}
+                    <div class="mb-3">
+                        <strong>
+                            <i class="bi bi-clock me-2"></i>
+                            Uhrzeit:
+                        </strong>
+                        <div>{{ meeting.time }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if meeting.location %}
+                    <div class="mb-3">
+                        <strong>
+                            <i class="bi bi-geo-alt me-2"></i>
+                            Ort:
+                        </strong>
+                        <div>{{ meeting.location }}</div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <strong>
+                            <i class="bi bi-people-fill me-2"></i>
+                            Gremium:
+                        </strong>
+                        <div>{{ meeting.committee }}</div>
+                    </div>
+                </div>
+
+                <!-- Links und Aktionen -->
+                <div class="mt-4">
+                    <h5>
+                        <i class="bi bi-link-45deg me-2"></i>
+                        Dokumente & Links
+                    </h5>
+                    
+                    {% if meeting.pdf_url %}
+                    <div class="d-grid gap-2 mb-3">
+                        <a href="{{ meeting.pdf_url }}" class="btn btn-danger" target="_blank">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>
+                            PDF-Dokument öffnen
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    {% if meeting.detail_url %}
+                    <div class="d-grid gap-2 mb-3">
+                        <a href="{{ meeting.detail_url }}" class="btn btn-primary" target="_blank">
+                            <i class="bi bi-globe me-2"></i>
+                            Original-Detailseite
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-secondary" onclick="window.print()">
+                            <i class="bi bi-printer me-2"></i>
+                            Seite drucken
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
