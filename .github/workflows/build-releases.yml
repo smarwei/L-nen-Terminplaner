@@ -40,48 +40,45 @@ jobs:
     - name: 🔨 Build Windows EXE
       run: |
         # Create main entry point
-        python -c "
-        main_content = '''#!/usr/bin/env python3
-import os
-import sys
-import threading
-import time
-import webbrowser
-from pathlib import Path
+        @"
+        #!/usr/bin/env python3
+        import os
+        import sys
+        import threading
+        import time
+        import webbrowser
+        from pathlib import Path
 
-current_dir = Path(__file__).parent
-sys.path.insert(0, str(current_dir))
+        current_dir = Path(__file__).parent
+        sys.path.insert(0, str(current_dir))
 
-from app import app
+        from app import app
 
-def open_browser():
-    time.sleep(2)
-    webbrowser.open(\"http://localhost:5000\")
+        def open_browser():
+            time.sleep(2)
+            webbrowser.open("http://localhost:5000")
 
-def main():
-    print(\"🚀 Lünen Terminplaner wird gestartet...\")
-    print(\"📊 Flask-Server startet auf http://localhost:5000\")
-    print(\"🌐 Browser wird automatisch geöffnet...\")
-    print()
-    print(\"📝 Zum Beenden: Strg+C drücken\")
-    print(\"=\" * 50)
-    
-    browser_thread = threading.Thread(target=open_browser)
-    browser_thread.daemon = True
-    browser_thread.start()
-    
-    try:
-        app.run(debug=False, host=\"127.0.0.1\", port=5000, use_reloader=False)
-    except KeyboardInterrupt:
-        print(\"\\n🛑 Anwendung wird beendet...\")
-        sys.exit(0)
+        def main():
+            print("🚀 Lünen Terminplaner wird gestartet...")
+            print("📊 Flask-Server startet auf http://localhost:5000")
+            print("🌐 Browser wird automatisch geöffnet...")
+            print()
+            print("📝 Zum Beenden: Strg+C drücken")
+            print("=" * 50)
+            
+            browser_thread = threading.Thread(target=open_browser)
+            browser_thread.daemon = True
+            browser_thread.start()
+            
+            try:
+                app.run(debug=False, host="127.0.0.1", port=5000, use_reloader=False)
+            except KeyboardInterrupt:
+                print("\n🛑 Anwendung wird beendet...")
+                sys.exit(0)
 
-if __name__ == \"__main__\":
-    main()
-        '''
-        with open('main.py', 'w', encoding='utf-8') as f:
-            f.write(main_content)
-        "
+        if __name__ == "__main__":
+            main()
+        "@ | Out-File -FilePath "main.py" -Encoding UTF8
         
         # Build with PyInstaller
         pyinstaller --onefile --name=LuenenTerminplaner --add-data="templates;templates" --add-data="downloads;downloads" --add-data="exports;exports" --add-data="spezifikation.md;." --add-data="requirements.txt;." --hidden-import=flask --hidden-import=requests --hidden-import=beautifulsoup4 --hidden-import=sumy.parsers.plaintext --hidden-import=sumy.nlp.tokenizers --hidden-import=sumy.summarizers.lsa --hidden-import=sumy.nlp.stemmers --console main.py
@@ -89,7 +86,7 @@ if __name__ == \"__main__\":
     - name: 📋 Create Windows installer
       run: |
         # Create installer script
-        $installerContent = @'
+        @"
         @echo off
         title Luenen Terminplaner - Installation
         echo ==========================================
@@ -105,7 +102,7 @@ if __name__ == \"__main__\":
         copy "LuenenTerminplaner.exe" "%INSTALL_DIR%\" >nul
         
         echo Erstelle Desktop-Verknuepfung...
-        powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%USERPROFILE%\Desktop\Luenen Terminplaner.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\LuenenTerminplaner.exe'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'Luenen Terminplaner - Ratsinformationen automatisiert'; $Shortcut.Save()"
+        powershell -Command "$$WshShell = New-Object -comObject WScript.Shell; $$Shortcut = $$WshShell.CreateShortcut('%USERPROFILE%\Desktop\Luenen Terminplaner.lnk'); $$Shortcut.TargetPath = '%INSTALL_DIR%\LuenenTerminplaner.exe'; $$Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $$Shortcut.Description = 'Luenen Terminplaner - Ratsinformationen automatisiert'; $$Shortcut.Save()"
         
         echo.
         echo ========================================
@@ -116,28 +113,26 @@ if __name__ == \"__main__\":
         echo Desktop-Verknuepfung wurde erstellt.
         echo.
         pause
-        '@
-        
-        $installerContent | Out-File -FilePath "install.bat" -Encoding Default
+        "@ | Out-File -FilePath "install.bat" -Encoding Default
         
     - name: 📖 Create Windows README
       run: |
-        $readmeContent = @'
+        @"
         # Lünen Terminplaner - Windows Version
         
         ## 🚀 Installation
         
         1. **Einfache Installation:**
-           - Doppelklick auf `install.bat`
+           - Doppelklick auf ``install.bat``
            - Folgen Sie den Anweisungen
         
         2. **Manuelle Installation:**
-           - Kopieren Sie `LuenenTerminplaner.exe` in einen Ordner
+           - Kopieren Sie ``LuenenTerminplaner.exe`` in einen Ordner
            - Erstellen Sie eine Desktop-Verknüpfung
         
         ## 📋 Verwendung
         
-        1. Doppelklick auf `LuenenTerminplaner.exe`
+        1. Doppelklick auf ``LuenenTerminplaner.exe``
         2. Browser öffnet sich automatisch
         3. Termine suchen und verwalten
         4. Zum Beenden: Strg+C in der Konsole
@@ -152,9 +147,7 @@ if __name__ == \"__main__\":
         
         Bei Problemen Windows Defender/Antivirus prüfen oder
         als Administrator ausführen.
-        '@
-        
-        $readmeContent | Out-File -FilePath "README_Windows.md" -Encoding UTF8
+        "@ | Out-File -FilePath "README_Windows.md" -Encoding UTF8
         
     - name: 📦 Package Windows release
       run: |
