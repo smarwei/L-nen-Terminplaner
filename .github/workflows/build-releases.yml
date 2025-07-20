@@ -446,7 +446,7 @@ jobs:
     name: 🚀 Create GitHub Release
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/')
     
     steps:
     - name: 📥 Checkout code
