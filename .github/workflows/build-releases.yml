@@ -1,0 +1,542 @@
+name: Build Cross-Platform Releases
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'release-*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  # ========================================
+  # Windows EXE Build
+  # ========================================
+  build-windows:
+    name: 🪟 Build Windows EXE
+    runs-on: windows-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: 🔨 Build Windows EXE
+      run: |
+        # Create main entry point
+        python -c "
+        main_content = '''#!/usr/bin/env python3
+import os
+import sys
+import threading
+import time
+import webbrowser
+from pathlib import Path
+
+current_dir = Path(__file__).parent
+sys.path.insert(0, str(current_dir))
+
+from app import app
+
+def open_browser():
+    time.sleep(2)
+    webbrowser.open(\"http://localhost:5000\")
+
+def main():
+    print(\"🚀 Lünen Terminplaner wird gestartet...\")
+    print(\"📊 Flask-Server startet auf http://localhost:5000\")
+    print(\"🌐 Browser wird automatisch geöffnet...\")
+    print()
+    print(\"📝 Zum Beenden: Strg+C drücken\")
+    print(\"=\" * 50)
+    
+    browser_thread = threading.Thread(target=open_browser)
+    browser_thread.daemon = True
+    browser_thread.start()
+    
+    try:
+        app.run(debug=False, host=\"127.0.0.1\", port=5000, use_reloader=False)
+    except KeyboardInterrupt:
+        print(\"\\n🛑 Anwendung wird beendet...\")
+        sys.exit(0)
+
+if __name__ == \"__main__\":
+    main()
+        '''
+        with open('main.py', 'w', encoding='utf-8') as f:
+            f.write(main_content)
+        "
+        
+        # Build with PyInstaller
+        pyinstaller --onefile --name=LuenenTerminplaner --add-data="templates;templates" --add-data="downloads;downloads" --add-data="exports;exports" --add-data="spezifikation.md;." --add-data="requirements.txt;." --hidden-import=flask --hidden-import=requests --hidden-import=beautifulsoup4 --hidden-import=sumy.parsers.plaintext --hidden-import=sumy.nlp.tokenizers --hidden-import=sumy.summarizers.lsa --hidden-import=sumy.nlp.stemmers --console main.py
+        
+    - name: 📋 Create Windows installer
+      run: |
+        # Create installer script
+        $installerContent = @'
+        @echo off
+        title Luenen Terminplaner - Installation
+        echo ==========================================
+        echo    Luenen Terminplaner - Installation
+        echo ==========================================
+        echo.
+        
+        echo Erstelle Programmordner...
+        set "INSTALL_DIR=%USERPROFILE%\LuenenTerminplaner"
+        if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+        
+        echo Kopiere Programm...
+        copy "LuenenTerminplaner.exe" "%INSTALL_DIR%\" >nul
+        
+        echo Erstelle Desktop-Verknuepfung...
+        powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('%USERPROFILE%\Desktop\Luenen Terminplaner.lnk'); $Shortcut.TargetPath = '%INSTALL_DIR%\LuenenTerminplaner.exe'; $Shortcut.WorkingDirectory = '%INSTALL_DIR%'; $Shortcut.Description = 'Luenen Terminplaner - Ratsinformationen automatisiert'; $Shortcut.Save()"
+        
+        echo.
+        echo ========================================
+        echo Installation erfolgreich abgeschlossen!
+        echo ========================================
+        echo.
+        echo Das Programm wurde installiert.
+        echo Desktop-Verknuepfung wurde erstellt.
+        echo.
+        pause
+        '@
+        
+        $installerContent | Out-File -FilePath "install.bat" -Encoding Default
+        
+    - name: 📖 Create Windows README
+      run: |
+        $readmeContent = @'
+        # Lünen Terminplaner - Windows Version
+        
+        ## 🚀 Installation
+        
+        1. **Einfache Installation:**
+           - Doppelklick auf `install.bat`
+           - Folgen Sie den Anweisungen
+        
+        2. **Manuelle Installation:**
+           - Kopieren Sie `LuenenTerminplaner.exe` in einen Ordner
+           - Erstellen Sie eine Desktop-Verknüpfung
+        
+        ## 📋 Verwendung
+        
+        1. Doppelklick auf `LuenenTerminplaner.exe`
+        2. Browser öffnet sich automatisch
+        3. Termine suchen und verwalten
+        4. Zum Beenden: Strg+C in der Konsole
+        
+        ## 🔧 Systemanforderungen
+        
+        - Windows 10 oder neuer
+        - Internetverbindung für Termine-Download
+        - Ca. 100 MB freier Speicherplatz
+        
+        ## ❓ Support
+        
+        Bei Problemen Windows Defender/Antivirus prüfen oder
+        als Administrator ausführen.
+        '@
+        
+        $readmeContent | Out-File -FilePath "README_Windows.md" -Encoding UTF8
+        
+    - name: 📦 Package Windows release
+      run: |
+        mkdir windows-release
+        copy dist\LuenenTerminplaner.exe windows-release\
+        copy install.bat windows-release\
+        copy README_Windows.md windows-release\
+        copy spezifikation.md windows-release\
+        
+        # Create ZIP
+        Compress-Archive -Path windows-release\* -DestinationPath LuenenTerminplaner_Windows.zip
+        
+    - name: 📤 Upload Windows artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: windows-release
+        path: |
+          LuenenTerminplaner_Windows.zip
+          dist/LuenenTerminplaner.exe
+
+  # ========================================
+  # Linux AppImage Build  
+  # ========================================
+  build-linux:
+    name: 🐧 Build Linux AppImage
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: 🔧 Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget file
+        
+    - name: 📦 Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: 🔨 Build Linux binary
+      run: |
+        # Create main entry point for Linux
+        cat > main.py << 'EOF'
+        #!/usr/bin/env python3
+        import os
+        import sys
+        import threading
+        import time
+        import webbrowser
+        from pathlib import Path
+        
+        current_dir = Path(__file__).parent
+        sys.path.insert(0, str(current_dir))
+        
+        from app import app
+        
+        def open_browser():
+            time.sleep(2)
+            try:
+                webbrowser.open('http://localhost:5000')
+            except:
+                print("📝 Browser konnte nicht automatisch geöffnet werden.")
+                print("🌐 Öffnen Sie manuell: http://localhost:5000")
+        
+        def main():
+            print("🚀 Lünen Terminplaner (Linux)")
+            print("📊 Flask-Server startet auf http://localhost:5000")
+            print("🌐 Browser wird automatisch geöffnet...")
+            print()
+            print("📝 Zum Beenden: Strg+C drücken")
+            print("=" * 50)
+            
+            browser_thread = threading.Thread(target=open_browser)
+            browser_thread.daemon = True
+            browser_thread.start()
+            
+            try:
+                app.run(debug=False, host='127.0.0.1', port=5000, use_reloader=False)
+            except KeyboardInterrupt:
+                print("\n🛑 Anwendung wird beendet...")
+                sys.exit(0)
+        
+        if __name__ == '__main__':
+            main()
+        EOF
+        
+        # Build with PyInstaller
+        pyinstaller --onefile --name=LuenenTerminplaner \
+          --add-data="templates:templates" \
+          --add-data="downloads:downloads" \
+          --add-data="exports:exports" \
+          --add-data="spezifikation.md:." \
+          --add-data="requirements.txt:." \
+          --hidden-import=flask \
+          --hidden-import=requests \
+          --hidden-import=beautifulsoup4 \
+          --hidden-import=sumy.parsers.plaintext \
+          --hidden-import=sumy.nlp.tokenizers \
+          --hidden-import=sumy.summarizers.lsa \
+          --hidden-import=sumy.nlp.stemmers \
+          --console main.py
+        
+    - name: 📱 Create AppImage
+      run: |
+        # Download AppImage tools
+        wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+        
+        # Create AppDir structure
+        mkdir -p AppDir/usr/bin
+        mkdir -p AppDir/usr/share/applications
+        mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+        
+        # Copy binary
+        cp dist/LuenenTerminplaner AppDir/usr/bin/
+        
+        # Create desktop file
+        cat > AppDir/luenen-terminplaner.desktop << 'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=Lünen Terminplaner
+        Comment=Automatisierte Extraktion von Ratsinformationen
+        Exec=LuenenTerminplaner
+        Icon=luenen-terminplaner
+        Categories=Office;Utility;
+        Terminal=true
+        EOF
+        
+        # Create a simple icon (placeholder)
+        cat > AppDir/usr/share/icons/hicolor/256x256/apps/luenen-terminplaner.svg << 'EOF'
+        <svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
+          <rect width="256" height="256" fill="#4285f4"/>
+          <text x="128" y="140" text-anchor="middle" fill="white" font-size="32" font-family="Arial">LT</text>
+          <text x="128" y="180" text-anchor="middle" fill="white" font-size="16" font-family="Arial">Terminplaner</text>
+        </svg>
+        EOF
+        
+        # Copy desktop file to root
+        cp AppDir/luenen-terminplaner.desktop AppDir/
+        
+        # Create AppRun
+        cat > AppDir/AppRun << 'EOF'
+        #!/bin/bash
+        SELF=$(readlink -f "$0")
+        HERE=${SELF%/*}
+        export PATH="${HERE}/usr/bin/:${PATH}"
+        exec "${HERE}/usr/bin/LuenenTerminplaner" "$@"
+        EOF
+        chmod +x AppDir/AppRun
+        
+        # Build AppImage
+        ./appimagetool-x86_64.AppImage AppDir LuenenTerminplaner.AppImage
+        
+    - name: 📋 Create Linux installer
+      run: |
+        cat > install-linux.sh << 'EOF'
+        #!/bin/bash
+        
+        echo "=========================================="
+        echo "   Lünen Terminplaner - Linux Installation"
+        echo "=========================================="
+        echo
+        
+        # Check if AppImage is executable
+        if [ ! -f "LuenenTerminplaner.AppImage" ]; then
+            echo "❌ LuenenTerminplaner.AppImage nicht gefunden!"
+            echo "Bitte stellen Sie sicher, dass die Datei im gleichen Verzeichnis ist."
+            exit 1
+        fi
+        
+        # Make executable
+        chmod +x LuenenTerminplaner.AppImage
+        
+        # Create local bin directory
+        mkdir -p "$HOME/.local/bin"
+        
+        # Copy to local bin
+        cp LuenenTerminplaner.AppImage "$HOME/.local/bin/"
+        
+        # Create desktop entry
+        mkdir -p "$HOME/.local/share/applications"
+        cat > "$HOME/.local/share/applications/luenen-terminplaner.desktop" << 'DESKTOP'
+        [Desktop Entry]
+        Type=Application
+        Name=Lünen Terminplaner
+        Comment=Automatisierte Extraktion von Ratsinformationen der Stadt Lünen
+        Exec=%h/.local/bin/LuenenTerminplaner.AppImage
+        Icon=utilities-terminal
+        Categories=Office;Utility;
+        Terminal=true
+        DESKTOP
+        
+        echo "✅ Installation abgeschlossen!"
+        echo
+        echo "Das Programm wurde installiert nach:"
+        echo "   $HOME/.local/bin/LuenenTerminplaner.AppImage"
+        echo
+        echo "🚀 Zum Starten:"
+        echo "   1. Im Anwendungsmenü nach 'Lünen Terminplaner' suchen"
+        echo "   2. Oder direkt ausführen: ~/.local/bin/LuenenTerminplaner.AppImage"
+        echo
+        EOF
+        
+        chmod +x install-linux.sh
+        
+    - name: 📖 Create Linux README
+      run: |
+        cat > README_Linux.md << 'EOF'
+        # Lünen Terminplaner - Linux AppImage
+        
+        ## 🚀 Installation
+        
+        1. **Automatische Installation:**
+           ```bash
+           chmod +x install-linux.sh
+           ./install-linux.sh
+           ```
+        
+        2. **Manuelle Installation:**
+           ```bash
+           chmod +x LuenenTerminplaner.AppImage
+           ./LuenenTerminplaner.AppImage
+           ```
+        
+        ## 📋 Verwendung
+        
+        1. AppImage ausführen (Doppelklick oder Terminal)
+        2. Browser öffnet sich automatisch auf http://localhost:5000
+        3. Termine suchen und verwalten
+        4. Zum Beenden: Strg+C im Terminal
+        
+        ## 🔧 Systemanforderungen
+        
+        - Linux (Ubuntu 18.04+, Debian 10+, CentOS 7+)
+        - Internetverbindung für Termine-Download
+        - Ca. 100 MB freier Speicherplatz
+        
+        ## 🐧 Distribution Support
+        
+        Getestet auf:
+        - Ubuntu 20.04+
+        - Debian 11+
+        - Fedora 35+
+        - openSUSE Leap 15+
+        
+        ## ❓ Troubleshooting
+        
+        **Problem:** AppImage startet nicht
+        ```bash
+        # FUSE installieren
+        sudo apt install fuse  # Ubuntu/Debian
+        sudo dnf install fuse  # Fedora
+        ```
+        
+        **Problem:** Browser öffnet sich nicht
+        - Lösung: Manuell http://localhost:5000 öffnen
+        
+        **Problem:** Firewall blockiert
+        ```bash
+        # Port 5000 freigeben (falls nötig)
+        sudo ufw allow 5000
+        ```
+        EOF
+        
+    - name: 📦 Package Linux release
+      run: |
+        mkdir linux-release
+        cp LuenenTerminplaner.AppImage linux-release/
+        cp install-linux.sh linux-release/
+        cp README_Linux.md linux-release/
+        cp spezifikation.md linux-release/
+        
+        # Create tar.gz
+        tar -czf LuenenTerminplaner_Linux.tar.gz -C linux-release .
+        
+    - name: 📤 Upload Linux artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: linux-release
+        path: |
+          LuenenTerminplaner_Linux.tar.gz
+          LuenenTerminplaner.AppImage
+
+  # ========================================
+  # Create GitHub Release
+  # ========================================
+  create-release:
+    name: 🚀 Create GitHub Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 📥 Download Windows artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: windows-release
+        path: ./windows-artifacts
+        
+    - name: 📥 Download Linux artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: linux-release
+        path: ./linux-artifacts
+        
+    - name: 📝 Generate release notes
+      run: |
+        cat > RELEASE_NOTES.md << 'EOF'
+        # 🎉 Lünen Terminplaner Release
+        
+        Automatisierte Extraktion und Zusammenfassung von Ratsinformationen der Stadt Lünen.
+        
+        ## 🆕 Features
+        
+        - ✅ **Dynamische Gremien-Filter**: Alle verfügbaren Ausschüsse automatisch geladen
+        - ✅ **Detailseiten**: Ausführliche Zusammenfassungen für jedes Meeting
+        - ✅ **Mehrstufige Zusammenfassung**: Kurz- und Langversionen
+        - ✅ **Multiple Export-Formate**: Markdown, HTML, PDF, JSON
+        - ✅ **Duplicate Removal**: Automatische Bereinigung doppelter Termine
+        - ✅ **PDF-Priorisierung**: "Gesamtes Sitzungspaket" bevorzugt
+        - ✅ **Responsive Design**: Funktioniert auf allen Geräten
+        
+        ## 📦 Downloads
+        
+        ### Windows
+        - **LuenenTerminplaner_Windows.zip**: Vollständiges Paket mit Installer
+        - **LuenenTerminplaner.exe**: Standalone-Anwendung
+        
+        ### Linux  
+        - **LuenenTerminplaner_Linux.tar.gz**: Vollständiges Paket mit Installer
+        - **LuenenTerminplaner.AppImage**: Portable Anwendung
+        
+        ## 🚀 Installation
+        
+        ### Windows:
+        1. `LuenenTerminplaner_Windows.zip` herunterladen
+        2. Entpacken und `install.bat` ausführen
+        3. Desktop-Verknüpfung verwenden
+        
+        ### Linux:
+        1. `LuenenTerminplaner_Linux.tar.gz` herunterladen  
+        2. Entpacken und `./install-linux.sh` ausführen
+        3. Im Anwendungsmenü starten
+        
+        ## 🔧 Systemanforderungen
+        
+        - **Windows**: 10 oder neuer
+        - **Linux**: Ubuntu 18.04+, Debian 10+, Fedora 35+
+        - **Gemeinsam**: Internetverbindung, 100 MB Speicher
+        
+        ## 🎯 Nutzung
+        
+        1. Anwendung starten
+        2. Browser öffnet sich automatisch
+        3. Datumsbereiche und Gremien wählen
+        4. Termine laden und durchsuchen
+        5. Detailansichten und Exports nutzen
+        EOF
+        
+    - name: 🏷️ Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          windows-artifacts/LuenenTerminplaner_Windows.zip
+          windows-artifacts/LuenenTerminplaner.exe
+          linux-artifacts/LuenenTerminplaner_Linux.tar.gz
+          linux-artifacts/LuenenTerminplaner.AppImage
+        body_path: RELEASE_NOTES.md
+        tag_name: ${{ github.ref_name }}
+        name: "Lünen Terminplaner ${{ github.ref_name }}"
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

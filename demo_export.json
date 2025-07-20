@@ -1,0 +1,35 @@
+{
+  "export_date": "2025-07-20T16:47:17.745504",
+  "meetings": [
+    {
+      "title": "Rat der Stadt Lünen",
+      "date": "22.11.2024",
+      "time": "18:00",
+      "location": "Rathaus, Großer Sitzungssaal",
+      "committee": "Rat der Stadt Lünen",
+      "detail_url": "https://luenen.ratsinfomanagement.net/detail/12345",
+      "pdf_url": "https://luenen.ratsinfomanagement.net/documents/rat_2024_11.pdf",
+      "summary": "Der Rat der Stadt Lünen behandelte wichtige Beschlüsse zur Stadtentwicklung. Schwerpunkte waren die Haushaltspolitik 2025, Infrastrukturprojekte und nachhaltige Verkehrsplanung. Die Verwaltung stellte Pläne für den Ausbau erneuerbarer Energien vor."
+    },
+    {
+      "title": "Rechnungsprüfungsausschuss",
+      "date": "18.11.2024",
+      "time": "17:30",
+      "location": "Verwaltungsgebäude, Raum 201",
+      "committee": "Rechnungsprüfungsausschuss",
+      "detail_url": "https://luenen.ratsinfomanagement.net/detail/12346",
+      "pdf_url": "https://luenen.ratsinfomanagement.net/documents/rpf_2024_11.pdf",
+      "summary": "Der Rechnungsprüfungsausschuss prüfte den Jahresabschluss 2023 und stellte eine ordnungsgemäße Haushaltsführung fest. Besondere Aufmerksamkeit galt den Investitionen in digitale Infrastruktur und Bildungseinrichtungen."
+    },
+    {
+      "title": "Ausschuss für Arbeitsmarkt, Wirtschaftsförderung und Innovation",
+      "date": "29.11.2024",
+      "time": "19:00",
+      "location": "Wirtschaftsförderung, Konferenzraum",
+      "committee": "Ausschuss für Arbeitsmarkt, Wirtschaftsförderung und Innovation",
+      "detail_url": "https://luenen.ratsinfomanagement.net/detail/12347",
+      "pdf_url": "https://luenen.ratsinfomanagement.net/documents/awf_2024_11.pdf",
+      "summary": "Der Ausschuss diskutierte Maßnahmen zur Stärkung des lokalen Wirtschaftsstandorts. Themen waren die Förderung von Start-ups, die Digitalisierung kleiner Unternehmen und Kooperationen mit regionalen Hochschulen für Innovationsprojekte."
+    }
+  ]
+}

@@ -1,0 +1,252 @@
+name: Test & Development Build
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+jobs:
+  # ========================================
+  # Run Tests
+  # ========================================
+  test:
+    name: 🧪 Run Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-flask pytest-mock responses
+        
+    - name: 🧪 Run tests
+      run: |
+        python -m pytest tests/ -v --tb=short
+        
+    - name: 📊 Test coverage
+      run: |
+        pip install coverage
+        coverage run -m pytest tests/
+        coverage report --show-missing
+
+  # ========================================
+  # Code Quality Checks
+  # ========================================
+  quality:
+    name: 🔍 Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: 📦 Install quality tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort bandit safety
+        
+    - name: 🎨 Check code formatting (Black)
+      run: |
+        black --check --diff .
+        
+    - name: 📏 Check import sorting (isort)
+      run: |
+        isort --check-only --diff .
+        
+    - name: 🔍 Lint with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        
+    - name: 🔒 Security check (Bandit)
+      run: |
+        bandit -r . -f json -o bandit-report.json || true
+        bandit -r . --skip B101,B601
+        
+    - name: 🛡️ Dependency security check
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check
+
+  # ========================================
+  # Quick Development Build Test
+  # ========================================
+  build-test:
+    name: 🔧 Test Build Process
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        
+    - name: 🔨 Test PyInstaller build
+      run: |
+        # Create simple main.py for testing
+        python -c "
+        main_content = '''#!/usr/bin/env python3
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+from app import app
+
+if __name__ == \"__main__\":
+    print(\"Build test successful!\")
+    sys.exit(0)
+        '''
+        with open('main_test.py', 'w') as f:
+            f.write(main_content)
+        "
+        
+        # Test build (without actual execution)
+        pyinstaller --onefile --name=TestBuild main_test.py
+        
+    - name: ✅ Verify build artifacts
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" == "Windows" ]; then
+          ls -la dist/TestBuild.exe
+          echo "✅ Windows EXE build test passed"
+        else
+          ls -la dist/TestBuild
+          echo "✅ Linux binary build test passed"
+        fi
+
+  # ========================================
+  # Web Interface Test
+  # ========================================
+  web-test:
+    name: 🌐 Test Web Interface
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install selenium pytest-flask
+        
+    - name: 🚀 Start Flask app
+      run: |
+        python app.py &
+        sleep 5
+        
+    - name: 🧪 Test web endpoints
+      run: |
+        # Test main page
+        curl -f http://localhost:5000/ || exit 1
+        echo "✅ Main page accessible"
+        
+        # Test API endpoints
+        curl -f http://localhost:5000/api/committees || echo "⚠️ Committees API may need internet"
+        
+        echo "✅ Web interface tests completed"
+
+  # ========================================
+  # Documentation Check
+  # ========================================
+  docs:
+    name: 📖 Documentation Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 📋 Check required documentation
+      run: |
+        echo "Checking documentation files..."
+        
+        # Check if required files exist
+        files=("README.md" "spezifikation.md" "requirements.txt")
+        for file in "${files[@]}"; do
+          if [[ -f "$file" ]]; then
+            echo "✅ $file exists"
+          else
+            echo "❌ $file missing"
+            exit 1
+          fi
+        done
+        
+        # Check README content
+        if grep -q "Terminplaner" README.md; then
+          echo "✅ README.md has project content"
+        else
+          echo "❌ README.md seems empty or invalid"
+          exit 1
+        fi
+        
+        echo "📖 Documentation check passed!"
+
+  # ========================================
+  # Dependency Check
+  # ========================================
+  dependencies:
+    name: 📦 Dependency Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: 📊 Analyze dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pipdeptree pip-audit
+        
+        echo "📦 Installing project dependencies..."
+        pip install -r requirements.txt
+        
+        echo "🌳 Dependency tree:"
+        pipdeptree
+        
+        echo "🔍 Checking for known vulnerabilities..."
+        pip-audit || echo "⚠️ Some vulnerabilities found (non-blocking for dev)"
+        
+        echo "📊 Package sizes:"
+        pip list --format=columns

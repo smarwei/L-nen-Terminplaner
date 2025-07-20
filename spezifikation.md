@@ -62,7 +62,8 @@ Nur die folgenden Gremien sind relevant:
 ### 3. PDF-Verarbeitung
 
 * Herunterladen der verlinkten PDF-Dateien
-* Extraktion von Text
+* **Priorisierung von "Gesamtes Sitzungspaket" PDFs** für vollständige Dokumentation
+* Extraktion von Text mit mehreren Bibliotheken (PyMuPDF, pdfplumber als Fallback)
 * Optional: OCR (für gescannte PDFs, z. B. mit Tesseract)
 * **Zusammenfassung des Inhalts** (automatisch per NLP, z. B. mit `sumy`, `transformers`, `llm`…)
 
@@ -95,6 +96,21 @@ Nur die folgenden Gremien sind relevant:
 
 * Keine personenbezogenen Daten speichern
 * Alle PDFs stammen aus öffentlich zugänglichen Quellen der Stadt Lünen
+
+---
+
+## 📝 Implementierte Verbesserungen
+
+* **Duplikatentfernung**: Automatische Entfernung von doppelten Terminen basierend auf Datum, Uhrzeit und Gremium
+* **PDF-Priorisierung**: Bevorzugung von "Gesamtes Sitzungspaket" PDFs für vollständige Dokumentation
+* **Erweiterte Ausschusserkennung**: Verbesserte Patterns für Betriebsausschuss Zentrale Gebäudebewirtschaftung und andere Ausschüsse
+* **Robuste Fallback-Systeme**: Mehrere PDF-Verarbeitungsbibliotheken und Web-Scraping-Methoden
+* **Detailseiten**: Separate Seiten für jedes Meeting mit ausführlichen Zusammenfassungen
+* **Mehrstufige Zusammenfassung**: Kurze Übersicht + ausführliche Detailansicht
+* **Verbesserte Navigation**: Direkte Links zwischen Übersicht und Detailseiten
+* **Dynamische Gremien-Filter**: Alle verfügbaren Gremien werden angezeigt, relevante vorselektiert
+* **Flexible Committee-Auswahl**: Benutzer können beliebige Kombinationen von Gremien auswählen
+* **Smart Filter-Buttons**: "Alle", "Relevante", "Keine" für schnelle Auswahl
 
 ---
 
