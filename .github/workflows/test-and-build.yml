@@ -115,20 +115,17 @@ jobs:
     - name: 🔨 Test PyInstaller build
       run: |
         # Create simple main.py for testing
-        python -c "
-        main_content = '''#!/usr/bin/env python3
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent))
-from app import app
+        cat > main_test.py << 'EOF'
+        #!/usr/bin/env python3
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent))
+        from app import app
 
-if __name__ == \"__main__\":
-    print(\"Build test successful!\")
-    sys.exit(0)
-        '''
-        with open('main_test.py', 'w') as f:
-            f.write(main_content)
-        "
+        if __name__ == "__main__":
+            print("Build test successful!")
+            sys.exit(0)
+        EOF
         
         # Test build (without actual execution)
         pyinstaller --onefile --name=TestBuild main_test.py
